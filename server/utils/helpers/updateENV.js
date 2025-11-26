@@ -928,6 +928,7 @@ function supportedLLM(input = "") {
     "foundry",
     "zai",
     "giteeai",
+    "n8n-agent",
   ].includes(input);
   return validSelection ? null : `${input} is not a valid LLM provider.`;
 }
