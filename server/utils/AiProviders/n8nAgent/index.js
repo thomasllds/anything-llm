@@ -109,12 +109,13 @@ class N8nAgentLLM {
     return headers;
   }
 
-  #buildPayload(messages = [], temperature = 0.7) {
+  #buildPayload(messages = [], temperature = 0.7, sessionId = null) {
     return {
       model: this.model,
       messages,
       stream: true,
       temperature,
+      ...(sessionId ? { sessionId } : {}),
     };
   }
 
@@ -124,12 +125,12 @@ class N8nAgentLLM {
     return { controller, timeout };
   }
 
-  async #performRequest(messages = [], temperature = 0.7) {
+  async #performRequest(messages = [], temperature = 0.7, sessionId = null) {
     const { controller, timeout } = this.#createAbortController();
     const response = await fetch(this.#buildUrl(), {
       method: "POST",
       headers: this.#buildHeaders(),
-      body: JSON.stringify(this.#buildPayload(messages, temperature)),
+      body: JSON.stringify(this.#buildPayload(messages, temperature, sessionId)),
       signal: controller.signal,
     }).catch((error) => {
       clearTimeout(timeout);
@@ -238,10 +239,14 @@ class N8nAgentLLM {
     return streamIterable;
   }
 
-  async getChatCompletion(messages = null, { temperature = 0.7 } = {}) {
+  async getChatCompletion(
+    messages = null,
+    { temperature = 0.7, sessionId = null } = {}
+  ) {
     const { response, controller, timeout } = await this.#performRequest(
       messages,
-      temperature
+      temperature,
+      sessionId
     );
     const stream = this.#createSSEStream(response, controller, timeout);
     let textResponse = "";
@@ -266,10 +271,14 @@ class N8nAgentLLM {
     };
   }
 
-  async streamGetChatCompletion(messages = null, { temperature = 0.7 } = {}) {
+  async streamGetChatCompletion(
+    messages = null,
+    { temperature = 0.7, sessionId = null } = {}
+  ) {
     const { response, controller, timeout } = await this.#performRequest(
       messages,
-      temperature
+      temperature,
+      sessionId
     );
     const stream = this.#createSSEStream(response, controller, timeout);
     return await LLMPerformanceMonitor.measureStream(
