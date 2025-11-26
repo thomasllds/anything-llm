@@ -37,6 +37,7 @@ import MoonshotAiLogo from "@/media/llmprovider/moonshotai.png";
 import CometApiLogo from "@/media/llmprovider/cometapi.png";
 import FoundryLogo from "@/media/llmprovider/foundry-local.png";
 import GiteeAILogo from "@/media/llmprovider/giteeai.png";
+import N8nLogo from "@/media/llmprovider/generic-openai.png";
 
 import PreLoader from "@/components/Preloader";
 import OpenAiOptions from "@/components/LLMSelection/OpenAiOptions";
@@ -58,6 +59,7 @@ import OpenRouterOptions from "@/components/LLMSelection/OpenRouterOptions";
 import GroqAiOptions from "@/components/LLMSelection/GroqAiOptions";
 import CohereAiOptions from "@/components/LLMSelection/CohereAiOptions";
 import KoboldCPPOptions from "@/components/LLMSelection/KoboldCPPOptions";
+import N8nAgentOptions from "@/components/LLMSelection/N8nAgentOptions";
 import TextGenWebUIOptions from "@/components/LLMSelection/TextGenWebUIOptions";
 import LiteLLMOptions from "@/components/LLMSelection/LiteLLMOptions";
 import AWSBedrockLLMOptions from "@/components/LLMSelection/AwsBedrockLLMOptions";
@@ -354,6 +356,18 @@ export const AVAILABLE_LLM_PROVIDERS = [
     options: (settings) => <GiteeAIOptions settings={settings} />,
     description: "Run GiteeAI's powerful LLMs.",
     requiredConfig: ["GiteeAIApiKey"],
+  },
+  {
+    name: "n8n Agent (Streaming)",
+    value: "n8n-agent",
+    logo: N8nLogo,
+    options: (settings) => <N8nAgentOptions settings={settings} />,
+    description: "Stream responses from a custom n8n workflow webhook.",
+    requiredConfig: [
+      "N8nAgentBaseUrl",
+      "N8nAgentWebhookPath",
+      "N8nAgentModelPref",
+    ],
   },
   {
     name: "Generic OpenAI",
