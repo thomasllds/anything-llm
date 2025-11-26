@@ -17,6 +17,9 @@ function isNullOrNaN(value) {
 }
 
 const SystemSettings = {
+  /** A default system prompt that is used when no other system prompt is set or available to the function caller. */
+  saneDefaultSystemPrompt:
+    "Given the following conversation, relevant context, and a follow up question, reply with an answer to the current question the user is asking. Return only your response to the question given the above information following the users instructions as needed.",
   protectedFields: ["multi_user_mode", "hub_api_key"],
   publicFields: [
     "footer_data",
@@ -47,6 +50,7 @@ const SystemSettings = {
     "disabled_agent_skills",
     "agent_sql_connections",
     "custom_app_name",
+    "default_system_prompt",
 
     // Meta page customization
     "meta_page_title",
@@ -192,6 +196,12 @@ const SystemSettings = {
       if (!apiKey) return null;
       return String(apiKey);
     },
+    default_system_prompt: (prompt) => {
+      if (typeof prompt !== "string" || !prompt) return null;
+      if (prompt.trim() === SystemSettings.saneDefaultSystemPrompt)
+        return SystemSettings.saneDefaultSystemPrompt;
+      return String(prompt.trim());
+    },
   },
   currentSettings: async function () {
     const { hasVectorCachedFiles } = require("../utils/files");
@@ -222,6 +232,7 @@ const SystemSettings = {
           : process.env.EMBEDDING_MODEL_PREF,
       EmbeddingModelMaxChunkLength:
         process.env.EMBEDDING_MODEL_MAX_CHUNK_LENGTH,
+      OllamaEmbeddingBatchSize: process.env.OLLAMA_EMBEDDING_BATCH_SIZE || 1,
       VoyageAiApiKey: !!process.env.VOYAGEAI_API_KEY,
       GenericOpenAiEmbeddingApiKey:
         !!process.env.GENERIC_OPEN_AI_EMBEDDING_API_KEY,
@@ -630,6 +641,11 @@ const SystemSettings = {
       // Z.AI Keys
       ZAiApiKey: !!process.env.ZAI_API_KEY,
       ZAiModelPref: process.env.ZAI_MODEL_PREF,
+
+      // GiteeAI API Keys
+      GiteeAIApiKey: !!process.env.GITEE_AI_API_KEY,
+      GiteeAIModelPref: process.env.GITEE_AI_MODEL_PREF,
+      GiteeAITokenLimit: process.env.GITEE_AI_MODEL_TOKEN_LIMIT || 8192,
     };
   },
 
