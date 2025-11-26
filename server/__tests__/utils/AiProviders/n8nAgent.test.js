@@ -31,9 +31,9 @@ describe("N8nAgentLLM", () => {
 
   test("collects full response from SSE stream", async () => {
     const sseChunks = [
-      'data: {"type":"chunk","id":"1","delta":{"content":"Hello "}}\n\n',
-      'data: {"type":"chunk","id":"1","delta":{"content":"World"}}\n\n',
-      'data: {"type":"done","id":"1","finished":true}\n\n',
+      'data: {"type":"item","id":"1","content":"Hello "}\n\n',
+      'data: {"type":"item","id":"1","content":"World"}\n\n',
+      'data: {"type":"end","id":"1"}\n\n',
     ];
 
     global.fetch = jest.fn().mockResolvedValue(
@@ -73,9 +73,9 @@ describe("N8nAgentLLM", () => {
 
   test("streams chunks as they arrive", async () => {
     const sseChunks = [
-      'data: {"type":"chunk","id":"1","delta":{"content":"Hello"}}\n\n',
-      'data: {"type":"chunk","id":"1","delta":{"content":"!"}}\n\n',
-      "data: [DONE]\n\n",
+      '{"type":"item","id":"1","content":"Hello"}\n\n',
+      '{"type":"item","id":"1","content":"!"}\n\n',
+      'data: {"type":"done","id":"1","finished":true}\n\n',
     ];
 
     global.fetch = jest.fn().mockResolvedValue(
@@ -94,6 +94,24 @@ describe("N8nAgentLLM", () => {
     }
 
     expect(tokens).toEqual(["Hello", "!"]);
+  });
+
+  test("handles openai-style chunk events for backwards compatibility", async () => {
+    const sseChunks = [
+      'data: {"type":"chunk","id":"1","delta":{"content":"Hi"}}\n\n',
+      'data: [DONE]\n\n',
+    ];
+
+    global.fetch = jest.fn().mockResolvedValue(
+      new Response(buildSSEStream(sseChunks), { status: 200 })
+    );
+
+    const provider = new N8nAgentLLM();
+    const result = await provider.getChatCompletion([
+      { role: "user", content: "Hello" },
+    ]);
+
+    expect(result.textResponse).toBe("Hi");
   });
 
   test("throws on non-200 responses", async () => {

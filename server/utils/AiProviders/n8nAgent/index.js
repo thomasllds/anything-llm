@@ -156,10 +156,13 @@ class N8nAgentLLM {
         let ended = false;
 
         const emitChunk = function* (payload) {
-          const dataLine = payload.trim();
-          if (!dataLine) return;
+          const rawLine = payload.trim();
+          if (!rawLine) return;
 
-          const afterData = dataLine.replace(/^data:\s*/, "").trim();
+          const afterData = rawLine.startsWith("data:")
+            ? rawLine.replace(/^data:\s*/, "").trim()
+            : rawLine;
+
           if (!afterData) return;
           if (afterData === "[DONE]") {
             ended = true;
@@ -175,19 +178,26 @@ class N8nAgentLLM {
 
           try {
             const parsed = JSON.parse(afterData);
-            if (parsed?.type === "chunk" && parsed?.delta?.content) {
+
+            // n8n may emit begin/item/end events without "data:" prefixes.
+            const content = parsed?.delta?.content ?? parsed?.content ?? null;
+
+            if (content && ["chunk", "item"].includes(parsed?.type)) {
               return yield {
                 id: parsed?.id,
                 choices: [
                   {
-                    delta: { content: parsed.delta.content },
+                    delta: { content },
                     finish_reason: null,
                   },
                 ],
               };
             }
 
-            if (parsed?.type === "done" || parsed?.finished === true) {
+            if (
+              ["done", "end"].includes(parsed?.type) ||
+              parsed?.finished === true
+            ) {
               ended = true;
               return yield {
                 id: parsed?.id,
@@ -213,7 +223,6 @@ class N8nAgentLLM {
           for (const segment of segments) {
             const lines = segment.split("\n");
             for (const line of lines) {
-              if (!line.startsWith("data:")) continue;
               for (const emitted of emitChunk(line)) {
                 yield emitted;
               }
@@ -224,7 +233,6 @@ class N8nAgentLLM {
         if (!ended && buffer.length) {
           const lines = buffer.split("\n");
           for (const line of lines) {
-            if (!line.startsWith("data:")) continue;
             for (const emitted of emitChunk(line)) {
               yield emitted;
             }
