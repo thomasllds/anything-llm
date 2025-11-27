@@ -71,6 +71,29 @@ describe("N8nAgentLLM", () => {
     expect(body.sessionId).toBe("abc-123");
   });
 
+  test("adds chatInput from latest user message", async () => {
+    const sseChunks = ['data: {"type":"done","id":"1","finished":true}\n\n'];
+
+    global.fetch = jest.fn().mockResolvedValue(
+      new Response(buildSSEStream(sseChunks), { status: 200 })
+    );
+
+    const provider = new N8nAgentLLM();
+    await provider.getChatCompletion(
+      [
+        { role: "system", content: "setup" },
+        { role: "user", content: "first" },
+        { role: "assistant", content: "ack" },
+        { role: "user", content: "latest request" },
+      ],
+      { temperature: 0.1 }
+    );
+
+    const [, options] = global.fetch.mock.calls[0];
+    const body = JSON.parse(options.body);
+    expect(body.chatInput).toBe("latest request");
+  });
+
   test("streams chunks as they arrive", async () => {
     const sseChunks = [
       '{"type":"item","id":"1","content":"Hello"}\n\n',

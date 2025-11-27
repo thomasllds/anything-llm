@@ -109,13 +109,26 @@ class N8nAgentLLM {
     return headers;
   }
 
+  #getChatInput(messages = []) {
+    if (!Array.isArray(messages)) return null;
+    for (let i = messages.length - 1; i >= 0; i--) {
+      const message = messages[i];
+      if (message?.role === "user" && typeof message?.content === "string") {
+        return message.content;
+      }
+    }
+    return null;
+  }
+
   #buildPayload(messages = [], temperature = 0.7, sessionId = null) {
+    const chatInput = this.#getChatInput(messages);
     return {
       model: this.model,
       messages,
       stream: true,
       temperature,
       ...(sessionId ? { sessionId } : {}),
+      ...(chatInput ? { chatInput } : {}),
     };
   }
 
