@@ -584,6 +584,15 @@ const SystemSettings = {
       GenericOpenAiKey: !!process.env.GENERIC_OPEN_AI_API_KEY,
       GenericOpenAiMaxTokens: process.env.GENERIC_OPEN_AI_MAX_TOKENS,
 
+      // n8n Agent LLM Keys
+      N8nAgentBaseUrl: process.env.N8N_AGENT_BASE_URL,
+      N8nAgentWebhookPath:
+        process.env.N8N_AGENT_WEBHOOK_PATH || "/webhook/chat-agent-stream",
+      N8nAgentApiKey: !!process.env.N8N_AGENT_API_KEY,
+      N8nAgentModelPref: process.env.N8N_AGENT_MODEL_PREF,
+      N8nAgentTimeout: process.env.N8N_AGENT_TIMEOUT_MS || 600000,
+      N8nAgentTokenLimit: process.env.N8N_AGENT_MODEL_TOKEN_LIMIT,
+
       // Foundry Keys
       FoundryBasePath: process.env.FOUNDRY_BASE_PATH,
       FoundryModelPref: process.env.FOUNDRY_MODEL_PREF,

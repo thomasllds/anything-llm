@@ -31,6 +31,7 @@ import DellProAiStudioLogo from "@/media/llmprovider/dpais.png";
 import MoonshotAiLogo from "@/media/llmprovider/moonshotai.png";
 import CometApiLogo from "@/media/llmprovider/cometapi.png";
 import GiteeAILogo from "@/media/llmprovider/giteeai.png";
+import N8nLogo from "@/media/llmprovider/generic-openai.png";
 
 import OpenAiOptions from "@/components/LLMSelection/OpenAiOptions";
 import GenericOpenAiOptions from "@/components/LLMSelection/GenericOpenAiOptions";
@@ -38,6 +39,7 @@ import AzureAiOptions from "@/components/LLMSelection/AzureAiOptions";
 import AnthropicAiOptions from "@/components/LLMSelection/AnthropicAiOptions";
 import LMStudioOptions from "@/components/LLMSelection/LMStudioOptions";
 import LocalAiOptions from "@/components/LLMSelection/LocalAiOptions";
+import N8nAgentOptions from "@/components/LLMSelection/N8nAgentOptions";
 import GeminiLLMOptions from "@/components/LLMSelection/GeminiLLMOptions";
 import OllamaLLMOptions from "@/components/LLMSelection/OllamaLLMOptions";
 import MistralOptions from "@/components/LLMSelection/MistralOptions";
@@ -248,6 +250,13 @@ const LLMS = [
     logo: APIPieLogo,
     options: (settings) => <ApiPieLLMOptions settings={settings} />,
     description: "A unified API of AI services from leading providers",
+  },
+  {
+    name: "n8n Agent (Streaming)",
+    value: "n8n-agent",
+    logo: N8nLogo,
+    options: (settings) => <N8nAgentOptions settings={settings} />,
+    description: "Stream completions from a custom n8n webhook.",
   },
   {
     name: "Generic OpenAI",
