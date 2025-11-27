@@ -53,6 +53,20 @@ describe("N8nAgentLLM", () => {
     );
   });
 
+  test("requests SSE responses via Accept header", async () => {
+    const sseChunks = ['data: {"type":"done","id":"1","finished":true}\n\n'];
+
+    global.fetch = jest.fn().mockResolvedValue(
+      new Response(buildSSEStream(sseChunks), { status: 200 })
+    );
+
+    const provider = new N8nAgentLLM();
+    await provider.getChatCompletion([{ role: "user", content: "Hi" }], {});
+
+    const [, options] = global.fetch.mock.calls[0];
+    expect(options.headers["Accept"]).toBe("text/event-stream");
+  });
+
   test("sends session id when provided", async () => {
     const sseChunks = ['data: {"type":"done","id":"1","finished":true}\n\n'];
 

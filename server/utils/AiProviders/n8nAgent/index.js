@@ -103,6 +103,7 @@ class N8nAgentLLM {
   #buildHeaders() {
     const headers = {
       "Content-Type": "application/json",
+      Accept: "text/event-stream",
       "User-Agent": getAnythingLLMUserAgent(),
     };
     if (this.apiKey) headers["Authorization"] = `Bearer ${this.apiKey}`;
