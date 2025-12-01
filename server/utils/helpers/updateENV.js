@@ -234,6 +234,32 @@ const KEY_MAPPING = {
     checks: [nonZero],
   },
 
+  // n8n Agent Settings
+  N8nAgentBaseUrl: {
+    envKey: "N8N_AGENT_BASE_URL",
+    checks: [isValidURL],
+  },
+  N8nAgentWebhookPath: {
+    envKey: "N8N_AGENT_WEBHOOK_PATH",
+    checks: [isNotEmpty],
+  },
+  N8nAgentApiKey: {
+    envKey: "N8N_AGENT_API_KEY",
+    checks: [],
+  },
+  N8nAgentModelPref: {
+    envKey: "N8N_AGENT_MODEL_PREF",
+    checks: [isNotEmpty],
+  },
+  N8nAgentTimeout: {
+    envKey: "N8N_AGENT_TIMEOUT_MS",
+    checks: [nonZero],
+  },
+  N8nAgentTokenLimit: {
+    envKey: "N8N_AGENT_MODEL_TOKEN_LIMIT",
+    checks: [nonZero],
+  },
+
   // AWS Bedrock LLM InferenceSettings
   AwsBedrockLLMConnectionMethod: {
     envKey: "AWS_BEDROCK_LLM_CONNECTION_METHOD",
@@ -902,6 +928,7 @@ function supportedLLM(input = "") {
     "foundry",
     "zai",
     "giteeai",
+    "n8n-agent",
   ].includes(input);
   return validSelection ? null : `${input} is not a valid LLM provider.`;
 }
