@@ -191,8 +191,9 @@ class N8nAgentLLM {
   }
 
   #createSSEStream(response, controller, timeout) {
+    const { Readable } = require("stream");
     const decoder = new TextDecoder();
-    const reader = response.body.getReader();
+    const nodeStream = Readable.fromWeb(response.body);
     const log = this.log.bind(this);
     const streamIterable = {
       async *[Symbol.asyncIterator]() {
@@ -269,14 +270,10 @@ class N8nAgentLLM {
           }
         };
 
-        while (!ended) {
-          const { done, value } = await reader.read();
-          if (done) break;
-          const decoded = decoder.decode(value, { stream: true });
-          log(
-            `[SSE RAW ${new Date().toISOString()}] segment`,
-            decoded
-          );
+        for await (const chunk of nodeStream) {
+          if (ended) break;
+          const decoded = decoder.decode(chunk, { stream: true });
+          log(`[SSE RAW ${new Date().toISOString()}] segment`, decoded);
           buffer += decoded;
           const segments = buffer.split("\n\n");
           buffer = segments.pop();
