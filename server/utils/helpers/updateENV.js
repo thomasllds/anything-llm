@@ -4,6 +4,35 @@ const {
 } = require("../AiProviders/bedrock/utils");
 const { resetAllVectorStores } = require("../vectorStore/resetAllVectorStores");
 
+function maskN8nAgentValue(value) {
+  if (!value) return value;
+  if (value.length <= 4) return "***";
+  return `***${value.slice(-4)}`;
+}
+
+function logN8nAgentSettingChange(key, prevValue, nextValue) {
+  if (prevValue === nextValue) return;
+  const snapshot = {
+    baseUrl: process.env.N8N_AGENT_BASE_URL,
+    webhookPath: process.env.N8N_AGENT_WEBHOOK_PATH,
+    model: process.env.N8N_AGENT_MODEL_PREF,
+    timeoutMs: process.env.N8N_AGENT_TIMEOUT_MS,
+    tokenLimit: process.env.N8N_AGENT_MODEL_TOKEN_LIMIT,
+    apiKey: maskN8nAgentValue(process.env.N8N_AGENT_API_KEY),
+  };
+
+  console.log(
+    "[N8nAgent Config] Setting updated",
+    key,
+    "from",
+    maskN8nAgentValue(prevValue),
+    "to",
+    maskN8nAgentValue(nextValue),
+    "Current config:",
+    snapshot
+  );
+}
+
 const KEY_MAPPING = {
   LLMProvider: {
     envKey: "LLM_PROVIDER",
@@ -238,26 +267,32 @@ const KEY_MAPPING = {
   N8nAgentBaseUrl: {
     envKey: "N8N_AGENT_BASE_URL",
     checks: [isValidURL],
+    postUpdate: [logN8nAgentSettingChange],
   },
   N8nAgentWebhookPath: {
     envKey: "N8N_AGENT_WEBHOOK_PATH",
     checks: [isNotEmpty],
+    postUpdate: [logN8nAgentSettingChange],
   },
   N8nAgentApiKey: {
     envKey: "N8N_AGENT_API_KEY",
     checks: [],
+    postUpdate: [logN8nAgentSettingChange],
   },
   N8nAgentModelPref: {
     envKey: "N8N_AGENT_MODEL_PREF",
     checks: [isNotEmpty],
+    postUpdate: [logN8nAgentSettingChange],
   },
   N8nAgentTimeout: {
     envKey: "N8N_AGENT_TIMEOUT_MS",
     checks: [nonZero],
+    postUpdate: [logN8nAgentSettingChange],
   },
   N8nAgentTokenLimit: {
     envKey: "N8N_AGENT_MODEL_TOKEN_LIMIT",
     checks: [nonZero],
+    postUpdate: [logN8nAgentSettingChange],
   },
 
   // AWS Bedrock LLM InferenceSettings

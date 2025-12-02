@@ -34,6 +34,27 @@ class N8nAgentLLM {
     this.log(
       `Inference API: ${this.baseUrl}${this.webhookPath} Model: ${this.model}`
     );
+    this.log(
+      "Configuration snapshot",
+      this.#configurationSnapshot({ maskApiKey: true })
+    );
+  }
+
+  #configurationSnapshot({ maskApiKey = false } = {}) {
+    const maskValue = (value) => {
+      if (!value || !maskApiKey) return value;
+      if (value.length <= 4) return "***";
+      return `***${value.slice(-4)}`;
+    };
+
+    return {
+      baseUrl: this.baseUrl,
+      webhookPath: this.webhookPath,
+      model: this.model,
+      timeoutMs: this.timeoutMs,
+      tokenLimit: this.tokenLimit,
+      apiKey: maskValue(this.apiKey),
+    };
   }
 
   log(text, ...args) {
@@ -123,6 +144,14 @@ class N8nAgentLLM {
 
   #buildPayload(messages = [], temperature = 0.7, sessionId = null) {
     const chatInput = this.#getChatInput(messages);
+    this.log("Preparing request payload", {
+      url: this.#buildUrl(),
+      model: this.model,
+      sessionId,
+      temperature,
+      chatInput,
+      messageCount: messages?.length || 0,
+    });
     return {
       model: this.model,
       messages,
@@ -164,6 +193,7 @@ class N8nAgentLLM {
   #createSSEStream(response, controller, timeout) {
     const decoder = new TextDecoder();
     const reader = response.body.getReader();
+    const log = this.log.bind(this);
     const streamIterable = {
       async *[Symbol.asyncIterator]() {
         let buffer = "";
@@ -197,6 +227,12 @@ class N8nAgentLLM {
             const content = parsed?.delta?.content ?? parsed?.content ?? null;
 
             if (content && ["chunk", "item"].includes(parsed?.type)) {
+              log("[SSE] chunk", {
+                id: parsed?.id,
+                type: parsed?.type,
+                finished: parsed?.finished,
+                content,
+              });
               return yield {
                 id: parsed?.id,
                 choices: [
@@ -212,6 +248,11 @@ class N8nAgentLLM {
               ["done", "end"].includes(parsed?.type) ||
               parsed?.finished === true
             ) {
+              log("[SSE] completion signal", {
+                id: parsed?.id,
+                type: parsed?.type,
+                finished: parsed?.finished,
+              });
               ended = true;
               return yield {
                 id: parsed?.id,
@@ -303,6 +344,11 @@ class N8nAgentLLM {
       sessionId
     );
     const stream = this.#createSSEStream(response, controller, timeout);
+    this.log("Streaming chat completion started", {
+      model: this.model,
+      sessionId,
+      temperature,
+    });
     return await LLMPerformanceMonitor.measureStream(
       Promise.resolve(stream),
       messages
@@ -321,6 +367,7 @@ class N8nAgentLLM {
           if (token) {
             fullText += token;
             completionTokens++;
+            this.log("[SSE] emitting token", { uuid, token });
             writeResponseChunk(response, {
               uuid,
               sources: [],

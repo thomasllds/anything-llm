@@ -1,7 +1,7 @@
 const path = require("path");
 const fs = require("fs");
 const { toChunks } = require("../../helpers");
-const { v4 } = require("uuid");
+const { randomUUID } = require("crypto");
 const { SUPPORTED_NATIVE_EMBEDDING_MODELS } = require("./constants");
 
 class NativeEmbedder {
@@ -112,7 +112,7 @@ class NativeEmbedder {
   }
 
   #tempfilePath() {
-    const filename = `${v4()}.tmp`;
+    const filename = `${randomUUID()}.tmp`;
     const tmpPath = process.env.STORAGE_DIR
       ? path.resolve(process.env.STORAGE_DIR, "tmp")
       : path.resolve(__dirname, `../../../storage/tmp`);

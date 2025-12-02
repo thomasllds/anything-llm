@@ -1,6 +1,11 @@
-process.env.NODE_ENV === "development"
-  ? require("dotenv").config({ path: `.env.${process.env.NODE_ENV}` })
-  : require("dotenv").config();
+try {
+  const dotenv = require("dotenv");
+  process.env.NODE_ENV === "development"
+    ? dotenv.config({ path: `.env.${process.env.NODE_ENV}` })
+    : dotenv.config();
+} catch (err) {
+  console.warn("[systemSettings] dotenv not installed, skipping load", err.message);
+}
 
 const { default: slugify } = require("slugify");
 const { isValidUrl, safeJsonParse } = require("../utils/http");
