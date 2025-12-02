@@ -221,6 +221,9 @@ function safeJSONStringify(obj) {
 
 function writeResponseChunk(response, data) {
   response.write(`data: ${safeJSONStringify(data)}\n\n`);
+  // Explicitly flush to encourage intermediaries to forward the chunk
+  // immediately instead of buffering SSE responses.
+  response.flush?.();
   return;
 }
 
