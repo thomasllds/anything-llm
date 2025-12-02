@@ -272,7 +272,12 @@ class N8nAgentLLM {
         while (!ended) {
           const { done, value } = await reader.read();
           if (done) break;
-          buffer += decoder.decode(value, { stream: true });
+          const decoded = decoder.decode(value, { stream: true });
+          log(
+            `[SSE RAW ${new Date().toISOString()}] segment`,
+            decoded
+          );
+          buffer += decoded;
           const segments = buffer.split("\n\n");
           buffer = segments.pop();
           for (const segment of segments) {
