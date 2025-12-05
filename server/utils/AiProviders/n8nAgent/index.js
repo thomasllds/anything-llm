@@ -194,10 +194,10 @@ class N8nAgentLLM {
   }
 
   #createSSEStream(response, controller, timeout) {
-    const { Readable } = require("stream");
     const decoder = new TextDecoder();
-    const nodeStream = Readable.fromWeb(response.body);
+    const reader = response.body.getReader();
     const log = this.log.bind(this);
+
     const streamIterable = {
       async *[Symbol.asyncIterator]() {
         let buffer = "";
@@ -273,29 +273,30 @@ class N8nAgentLLM {
           }
         };
 
-        for await (const chunk of nodeStream) {
-          if (ended) break;
-          const decoded = decoder.decode(chunk, { stream: true });
+        while (!ended) {
+          const { done, value } = await reader.read();
+          if (done) break;
+
+          const decoded = decoder.decode(value, { stream: true });
           log(`[SSE RAW ${new Date().toISOString()}] segment`, decoded);
           buffer += decoded;
-          const segments = buffer.split("\n\n");
-          buffer = segments.pop();
-          for (const segment of segments) {
+
+          let boundary = buffer.indexOf("\n\n");
+          while (boundary !== -1) {
+            const segment = buffer.slice(0, boundary);
+            buffer = buffer.slice(boundary + 2);
             const lines = segment.split("\n");
             for (const line of lines) {
-              for (const emitted of emitChunk(line)) {
-                yield emitted;
-              }
+              for (const emitted of emitChunk(line)) yield emitted;
             }
+            boundary = buffer.indexOf("\n\n");
           }
         }
 
         if (!ended && buffer.length) {
           const lines = buffer.split("\n");
           for (const line of lines) {
-            for (const emitted of emitChunk(line)) {
-              yield emitted;
-            }
+            for (const emitted of emitChunk(line)) yield emitted;
           }
         }
 
@@ -366,6 +367,21 @@ class N8nAgentLLM {
       let fullText = "";
       let completionTokens = 0;
 
+      const handleAbort = () => {
+        stream?.endMeasurement?.({ completion_tokens: completionTokens });
+        writeResponseChunk(response, {
+          uuid,
+          type: "abort",
+          textResponse: null,
+          sources: [],
+          close: true,
+          error: "stream aborted",
+        });
+        resolve(fullText);
+      };
+
+      response.on("close", handleAbort);
+
       try {
         for await (const chunk of stream) {
           const token = chunk?.choices?.[0]?.delta?.content;
@@ -392,12 +408,14 @@ class N8nAgentLLM {
               close: true,
               error: false,
             });
+            response.removeListener("close", handleAbort);
             stream?.endMeasurement?.({ completion_tokens: completionTokens });
             resolve(fullText);
             break;
           }
         }
       } catch (e) {
+        this.log("[SSE] streaming error", e);
         writeResponseChunk(response, {
           uuid,
           type: "abort",
