@@ -11,6 +11,7 @@ const {
 const {
   convertToChatHistory,
   writeResponseChunk,
+  setSseHeaders,
 } = require("../../utils/helpers/chat/responses");
 
 function embeddedEndpoints(app) {
@@ -32,12 +33,7 @@ function embeddedEndpoints(app) {
           username = null,
         } = reqBody(request);
 
-        response.setHeader("Cache-Control", "no-cache, no-transform");
-        response.setHeader("Content-Type", "text/event-stream");
-        response.setHeader("Access-Control-Allow-Origin", "*");
-        response.setHeader("Connection", "keep-alive");
-        response.setHeader("X-Accel-Buffering", "no");
-        response.flushHeaders();
+        setSseHeaders(response);
 
         await streamChatWithForEmbed(response, embed, message, sessionId, {
           promptOverride: prompt,
