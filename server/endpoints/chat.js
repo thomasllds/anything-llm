@@ -12,7 +12,10 @@ const {
   validWorkspaceAndThreadSlug,
   validWorkspaceSlug,
 } = require("../utils/middleware/validWorkspace");
-const { writeResponseChunk } = require("../utils/helpers/chat/responses");
+const {
+  writeResponseChunk,
+  setSseHeaders,
+} = require("../utils/helpers/chat/responses");
 const { WorkspaceThread } = require("../models/workspaceThread");
 const { User } = require("../models/user");
 const truncate = require("truncate");
@@ -42,12 +45,7 @@ function chatEndpoints(app) {
           return;
         }
 
-        response.setHeader("Cache-Control", "no-cache, no-transform");
-        response.setHeader("Content-Type", "text/event-stream");
-        response.setHeader("Access-Control-Allow-Origin", "*");
-        response.setHeader("Connection", "keep-alive");
-        response.setHeader("X-Accel-Buffering", "no");
-        response.flushHeaders();
+        setSseHeaders(response);
 
         if (multiUserMode(response) && !(await User.canSendChat(user))) {
           writeResponseChunk(response, {
@@ -130,12 +128,7 @@ function chatEndpoints(app) {
           return;
         }
 
-        response.setHeader("Cache-Control", "no-cache, no-transform");
-        response.setHeader("Content-Type", "text/event-stream");
-        response.setHeader("Access-Control-Allow-Origin", "*");
-        response.setHeader("Connection", "keep-alive");
-        response.setHeader("X-Accel-Buffering", "no");
-        response.flushHeaders();
+        setSseHeaders(response);
 
         if (multiUserMode(response) && !(await User.canSendChat(user))) {
           writeResponseChunk(response, {

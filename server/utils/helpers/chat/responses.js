@@ -219,7 +219,13 @@ function safeJSONStringify(obj) {
 }
 
 function writeResponseChunk(response, data) {
+  // Ensure headers are flushed before writing to avoid any implicit buffering
+  // from upstream proxies or reverse proxies that may wait for the first chunk
+  // before switching to streamed mode.
+  response.flushHeaders?.();
+
   response.write(`data: ${safeJSONStringify(data)}\n\n`);
+
   // Explicitly flush to encourage intermediaries to forward the chunk
   // immediately instead of buffering SSE responses.
   response.flush?.();
@@ -269,6 +275,17 @@ function formatChatHistory(
   });
 }
 
+function setSseHeaders(response) {
+  response.setHeader("Cache-Control", "no-cache, no-transform");
+  response.setHeader("Content-Type", "text/event-stream");
+  response.setHeader("Access-Control-Allow-Origin", "*");
+  response.setHeader("Connection", "keep-alive");
+  response.setHeader("X-Accel-Buffering", "no");
+  response.socket?.setKeepAlive(true);
+  response.socket?.setNoDelay(true);
+  response.flushHeaders?.();
+}
+
 module.exports = {
   handleDefaultStreamResponseV2,
   convertToChatHistory,
@@ -277,4 +294,5 @@ module.exports = {
   clientAbortedHandler,
   formatChatHistory,
   safeJSONStringify,
+  setSseHeaders,
 };
