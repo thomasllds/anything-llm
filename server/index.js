@@ -30,6 +30,10 @@ const { agentFlowEndpoints } = require("./endpoints/agentFlows");
 const { mcpServersEndpoints } = require("./endpoints/mcpServers");
 const { mobileEndpoints } = require("./endpoints/mobile");
 const { httpLogger } = require("./middleware/httpLogger");
+let compression = null;
+try {
+  compression = require("compression");
+} catch (_e) {}
 const app = express();
 const apiRouter = express.Router();
 const FILE_LIMIT = "3GB";
@@ -54,6 +58,18 @@ app.use(
     extended: true,
   })
 );
+
+if (compression) {
+  const shouldCompress = (req, res) => {
+    const accepts = req.headers.accept || "";
+    if (accepts.includes("text/event-stream")) return false;
+    return compression.filter(req, res);
+  };
+
+  // Allow downstream compression for non-SSE responses while explicitly disabling
+  // it for streaming endpoints where buffering would break incremental delivery.
+  app.use(compression({ filter: shouldCompress }));
+}
 
 if (!!process.env.ENABLE_HTTPS) {
   bootSSL(app, process.env.SERVER_PORT || 3001);
