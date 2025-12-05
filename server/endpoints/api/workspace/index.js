@@ -12,6 +12,7 @@ const { EventLogs } = require("../../../models/eventLogs");
 const {
   convertToChatHistory,
   writeResponseChunk,
+  setSseHeaders,
 } = require("../../../utils/helpers/chat/responses");
 const { ApiChatHandler } = require("../../../utils/chats/apiChatHandler");
 const { getModelTag } = require("../../utils");
@@ -834,12 +835,7 @@ function apiWorkspaceEndpoints(app) {
           return;
         }
 
-        response.setHeader("Cache-Control", "no-cache, no-transform");
-        response.setHeader("Content-Type", "text/event-stream");
-        response.setHeader("Access-Control-Allow-Origin", "*");
-        response.setHeader("Connection", "keep-alive");
-        response.setHeader("X-Accel-Buffering", "no");
-        response.flushHeaders();
+        setSseHeaders(response);
 
         await ApiChatHandler.streamChat({
           response,

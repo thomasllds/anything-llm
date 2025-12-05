@@ -19,6 +19,7 @@ function logN8nAgentSettingChange(key, prevValue, nextValue) {
     timeoutMs: process.env.N8N_AGENT_TIMEOUT_MS,
     tokenLimit: process.env.N8N_AGENT_MODEL_TOKEN_LIMIT,
     apiKey: maskN8nAgentValue(process.env.N8N_AGENT_API_KEY),
+    bufferStream: process.env.N8N_AGENT_BUFFER_STREAM,
   };
 
   console.log(
@@ -292,6 +293,11 @@ const KEY_MAPPING = {
   N8nAgentTokenLimit: {
     envKey: "N8N_AGENT_MODEL_TOKEN_LIMIT",
     checks: [nonZero],
+    postUpdate: [logN8nAgentSettingChange],
+  },
+  N8nAgentBufferStream: {
+    envKey: "N8N_AGENT_BUFFER_STREAM",
+    checks: [isBooleanString],
     postUpdate: [logN8nAgentSettingChange],
   },
 
@@ -859,6 +865,13 @@ function isNotEmpty(input = "") {
 function nonZero(input = "") {
   if (isNaN(Number(input))) return "Value must be a number";
   return Number(input) <= 0 ? "Value must be greater than zero" : null;
+}
+
+function isBooleanString(input = "") {
+  if (input === undefined || input === null) return null;
+  return ["true", "false"].includes(String(input).toLowerCase())
+    ? null
+    : "Value must be true or false";
 }
 
 function isInteger(input = "") {

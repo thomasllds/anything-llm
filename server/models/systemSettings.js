@@ -597,6 +597,8 @@ const SystemSettings = {
       N8nAgentModelPref: process.env.N8N_AGENT_MODEL_PREF,
       N8nAgentTimeout: process.env.N8N_AGENT_TIMEOUT_MS || 600000,
       N8nAgentTokenLimit: process.env.N8N_AGENT_MODEL_TOKEN_LIMIT,
+      N8nAgentBufferStream:
+        String(process.env.N8N_AGENT_BUFFER_STREAM).toLowerCase() === "true",
 
       // Foundry Keys
       FoundryBasePath: process.env.FOUNDRY_BASE_PATH,

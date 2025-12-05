@@ -19,6 +19,8 @@ class N8nAgentLLM {
     this.model = modelPreference ?? process.env.N8N_AGENT_MODEL_PREF ?? null;
     this.timeoutMs = Number(process.env.N8N_AGENT_TIMEOUT_MS || 600000);
     this.tokenLimit = Number(process.env.N8N_AGENT_MODEL_TOKEN_LIMIT || 4096);
+    this.bufferSseResponses =
+      String(process.env.N8N_AGENT_BUFFER_STREAM).toLowerCase() === "true";
 
     if (!this.model)
       throw new Error("N8n Agent must have a valid model preference set.");
@@ -54,6 +56,7 @@ class N8nAgentLLM {
       timeoutMs: this.timeoutMs,
       tokenLimit: this.tokenLimit,
       apiKey: maskValue(this.apiKey),
+      bufferSseResponses: this.bufferSseResponses,
     };
   }
 
@@ -74,7 +77,7 @@ class N8nAgentLLM {
   }
 
   streamingEnabled() {
-    return true;
+    return this.bufferSseResponses !== true;
   }
 
   promptWindowLimit() {

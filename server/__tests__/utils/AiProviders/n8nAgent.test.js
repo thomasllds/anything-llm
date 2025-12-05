@@ -23,6 +23,7 @@ describe("N8nAgentLLM", () => {
     process.env.N8N_AGENT_MODEL_PREF = "test-model";
     process.env.N8N_AGENT_TIMEOUT_MS = "1000";
     process.env.N8N_AGENT_WEBHOOK_PATH = "/webhook/chat-agent-stream";
+    process.env.N8N_AGENT_BUFFER_STREAM = undefined;
   });
 
   afterAll(() => {
@@ -149,6 +150,24 @@ describe("N8nAgentLLM", () => {
     ]);
 
     expect(result.textResponse).toBe("Hi");
+  });
+
+  test("can disable streaming when configured to buffer responses", async () => {
+    const sseChunks = ['data: {"type":"done","id":"1","finished":true}\n\n'];
+
+    global.fetch = jest.fn().mockResolvedValue(
+      new Response(buildSSEStream(sseChunks), { status: 200 })
+    );
+
+    process.env.N8N_AGENT_BUFFER_STREAM = "true";
+    const provider = new N8nAgentLLM();
+
+    expect(provider.streamingEnabled()).toBe(false);
+    const result = await provider.getChatCompletion([
+      { role: "user", content: "Hello" },
+    ]);
+
+    expect(result.textResponse).toBe("");
   });
 
   test("throws on non-200 responses", async () => {

@@ -97,6 +97,19 @@ export default function N8nAgentOptions({ settings }) {
             autoComplete="off"
           />
         </div>
+        <div className="flex flex-col w-60">
+          <label className="text-white text-sm font-semibold block mb-3">
+            Response streaming mode
+          </label>
+          <select
+            name="N8nAgentBufferStream"
+            className="border-none bg-theme-settings-input-bg text-white placeholder:text-theme-settings-input-placeholder text-sm rounded-lg focus:outline-primary-button active:outline-primary-button outline-none block w-full p-2.5"
+            defaultValue={settings?.N8nAgentBufferStream ? "true" : "false"}
+          >
+            <option value="false">Stream tokens immediately (no buffer)</option>
+            <option value="true">Buffer full response before sending</option>
+          </select>
+        </div>
       </div>
     </div>
   );
