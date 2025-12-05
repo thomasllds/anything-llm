@@ -134,6 +134,31 @@ describe("N8nAgentLLM", () => {
     expect(tokens).toEqual(["Hello", "!"]);
   });
 
+  test("does not buffer when CRLF delimiters are used", async () => {
+    const sseChunks = [
+      'data: {"type":"item","id":"1","content":"He"}\r\n\r\n',
+      'data: {"type":"item","id":"1","content":"llo"}\r\n\r\n',
+      'data: {"type":"done","id":"1","finished":true}\r\n\r\n',
+    ];
+
+    global.fetch = jest.fn().mockResolvedValue(
+      new Response(buildSSEStream(sseChunks), { status: 200 })
+    );
+
+    const provider = new N8nAgentLLM();
+    const stream = await provider.streamGetChatCompletion([
+      { role: "user", content: "Hello?" },
+    ]);
+
+    const tokens = [];
+    for await (const chunk of stream) {
+      const token = chunk?.choices?.[0]?.delta?.content;
+      if (token) tokens.push(token);
+    }
+
+    expect(tokens).toEqual(["He", "llo"]);
+  });
+
   test("handles openai-style chunk events for backwards compatibility", async () => {
     const sseChunks = [
       'data: {"type":"chunk","id":"1","delta":{"content":"Hi"}}\n\n',

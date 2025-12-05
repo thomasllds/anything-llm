@@ -273,6 +273,24 @@ class N8nAgentLLM {
           }
         };
 
+        const processSegments = async function* () {
+          // Support both LF and CRLF boundaries to avoid buffering when upstream
+          // proxies re-write newlines. As soon as a double-line break arrives we
+          // emit the buffered event.
+          let match = buffer.match(/\r?\n\r?\n/);
+          while (match) {
+            const segment = buffer.slice(0, match.index);
+            buffer = buffer.slice(match.index + match[0].length);
+
+            const lines = segment.split(/\r?\n/);
+            for (const line of lines) {
+              for (const emitted of emitChunk(line)) yield emitted;
+            }
+
+            match = buffer.match(/\r?\n\r?\n/);
+          }
+        };
+
         while (!ended) {
           const { done, value } = await reader.read();
           if (done) break;
@@ -281,20 +299,13 @@ class N8nAgentLLM {
           log(`[SSE RAW ${new Date().toISOString()}] segment`, decoded);
           buffer += decoded;
 
-          let boundary = buffer.indexOf("\n\n");
-          while (boundary !== -1) {
-            const segment = buffer.slice(0, boundary);
-            buffer = buffer.slice(boundary + 2);
-            const lines = segment.split("\n");
-            for (const line of lines) {
-              for (const emitted of emitChunk(line)) yield emitted;
-            }
-            boundary = buffer.indexOf("\n\n");
+          for await (const emitted of processSegments()) {
+            yield emitted;
           }
         }
 
         if (!ended && buffer.length) {
-          const lines = buffer.split("\n");
+          const lines = buffer.split(/\r?\n/);
           for (const line of lines) {
             for (const emitted of emitChunk(line)) yield emitted;
           }
