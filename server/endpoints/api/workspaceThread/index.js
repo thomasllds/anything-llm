@@ -592,10 +592,11 @@ function apiWorkspaceThreadEndpoints(app) {
 
         const user = userId ? await User.get({ id: Number(userId) }) : null;
 
-        response.setHeader("Cache-Control", "no-cache");
+        response.setHeader("Cache-Control", "no-cache, no-transform");
         response.setHeader("Content-Type", "text/event-stream");
         response.setHeader("Access-Control-Allow-Origin", "*");
         response.setHeader("Connection", "keep-alive");
+        response.setHeader("X-Accel-Buffering", "no");
         response.flushHeaders();
 
         await ApiChatHandler.streamChat({

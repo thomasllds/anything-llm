@@ -1,5 +1,4 @@
-const { v4: uuidv4 } = require("uuid");
-const moment = require("moment");
+const { randomUUID } = require("crypto");
 
 function clientAbortedHandler(resolve, fullText) {
   console.log(
@@ -17,7 +16,7 @@ function clientAbortedHandler(resolve, fullText) {
  * @returns {Promise<string>}
  */
 function handleDefaultStreamResponseV2(response, stream, responseProps) {
-  const { uuid = uuidv4(), sources = [] } = responseProps;
+  const { uuid = randomUUID(), sources = [] } = responseProps;
 
   // Why are we doing this?
   // OpenAI do enable the usage metrics in the stream response but:
@@ -144,7 +143,7 @@ function convertToChatHistory(history = []) {
       {
         role: "user",
         content: prompt,
-        sentAt: moment(createdAt).unix(),
+        sentAt: Math.floor(new Date(createdAt).getTime() / 1000),
         attachments: data?.attachments ?? [],
         chatId: id,
       },
@@ -154,7 +153,7 @@ function convertToChatHistory(history = []) {
         content: data.text,
         sources: data.sources || [],
         chatId: id,
-        sentAt: moment(createdAt).unix(),
+        sentAt: Math.floor(new Date(createdAt).getTime() / 1000),
         feedbackScore,
         metrics: data?.metrics || {},
       },
