@@ -19,6 +19,8 @@ class N8nAgentLLM {
     this.model = modelPreference ?? process.env.N8N_AGENT_MODEL_PREF ?? null;
     this.timeoutMs = Number(process.env.N8N_AGENT_TIMEOUT_MS || 600000);
     this.tokenLimit = Number(process.env.N8N_AGENT_MODEL_TOKEN_LIMIT || 4096);
+    this.bufferSseResponses =
+      String(process.env.N8N_AGENT_BUFFER_STREAM).toLowerCase() === "true";
 
     if (!this.model)
       throw new Error("N8n Agent must have a valid model preference set.");
@@ -54,6 +56,7 @@ class N8nAgentLLM {
       timeoutMs: this.timeoutMs,
       tokenLimit: this.tokenLimit,
       apiKey: maskValue(this.apiKey),
+      bufferSseResponses: this.bufferSseResponses,
     };
   }
 
@@ -74,7 +77,7 @@ class N8nAgentLLM {
   }
 
   streamingEnabled() {
-    return true;
+    return this.bufferSseResponses !== true;
   }
 
   promptWindowLimit() {
@@ -191,10 +194,10 @@ class N8nAgentLLM {
   }
 
   #createSSEStream(response, controller, timeout) {
-    const { Readable } = require("stream");
     const decoder = new TextDecoder();
-    const nodeStream = Readable.fromWeb(response.body);
+    const reader = response.body.getReader();
     const log = this.log.bind(this);
+
     const streamIterable = {
       async *[Symbol.asyncIterator]() {
         let buffer = "";
@@ -270,29 +273,42 @@ class N8nAgentLLM {
           }
         };
 
-        for await (const chunk of nodeStream) {
-          if (ended) break;
-          const decoded = decoder.decode(chunk, { stream: true });
+        const processSegments = async function* () {
+          // Emit as soon as we see a newline to avoid buffering when n8n streams
+          // NDJSON without the double-newline SSE separator. We still support
+          // the classic "\n\n" boundary by walking line by line.
+          while (true) {
+            const newlineIndex = buffer.search(/\r?\n/);
+            if (newlineIndex === -1) break;
+
+            const segment = buffer.slice(0, newlineIndex);
+            buffer = buffer.slice(newlineIndex + (buffer[newlineIndex] === "\r" ? 2 : 1));
+
+            // An empty line is an SSE boundary; skip emitting but keep iterating
+            // to process the next event immediately.
+            if (!segment.trim()) continue;
+
+            for (const emitted of emitChunk(segment)) yield emitted;
+          }
+        };
+
+        while (!ended) {
+          const { done, value } = await reader.read();
+          if (done) break;
+
+          const decoded = decoder.decode(value, { stream: true });
           log(`[SSE RAW ${new Date().toISOString()}] segment`, decoded);
           buffer += decoded;
-          const segments = buffer.split("\n\n");
-          buffer = segments.pop();
-          for (const segment of segments) {
-            const lines = segment.split("\n");
-            for (const line of lines) {
-              for (const emitted of emitChunk(line)) {
-                yield emitted;
-              }
-            }
+
+          for await (const emitted of processSegments()) {
+            yield emitted;
           }
         }
 
         if (!ended && buffer.length) {
-          const lines = buffer.split("\n");
+          const lines = buffer.split(/\r?\n/);
           for (const line of lines) {
-            for (const emitted of emitChunk(line)) {
-              yield emitted;
-            }
+            for (const emitted of emitChunk(line)) yield emitted;
           }
         }
 
@@ -363,6 +379,21 @@ class N8nAgentLLM {
       let fullText = "";
       let completionTokens = 0;
 
+      const handleAbort = () => {
+        stream?.endMeasurement?.({ completion_tokens: completionTokens });
+        writeResponseChunk(response, {
+          uuid,
+          type: "abort",
+          textResponse: null,
+          sources: [],
+          close: true,
+          error: "stream aborted",
+        });
+        resolve(fullText);
+      };
+
+      response.on("close", handleAbort);
+
       try {
         for await (const chunk of stream) {
           const token = chunk?.choices?.[0]?.delta?.content;
@@ -389,12 +420,14 @@ class N8nAgentLLM {
               close: true,
               error: false,
             });
+            response.removeListener("close", handleAbort);
             stream?.endMeasurement?.({ completion_tokens: completionTokens });
             resolve(fullText);
             break;
           }
         }
       } catch (e) {
+        this.log("[SSE] streaming error", e);
         writeResponseChunk(response, {
           uuid,
           type: "abort",

@@ -23,6 +23,7 @@ describe("N8nAgentLLM", () => {
     process.env.N8N_AGENT_MODEL_PREF = "test-model";
     process.env.N8N_AGENT_TIMEOUT_MS = "1000";
     process.env.N8N_AGENT_WEBHOOK_PATH = "/webhook/chat-agent-stream";
+    process.env.N8N_AGENT_BUFFER_STREAM = undefined;
   });
 
   afterAll(() => {
@@ -133,6 +134,31 @@ describe("N8nAgentLLM", () => {
     expect(tokens).toEqual(["Hello", "!"]);
   });
 
+  test("does not buffer when CRLF delimiters are used", async () => {
+    const sseChunks = [
+      'data: {"type":"item","id":"1","content":"He"}\r\n\r\n',
+      'data: {"type":"item","id":"1","content":"llo"}\r\n\r\n',
+      'data: {"type":"done","id":"1","finished":true}\r\n\r\n',
+    ];
+
+    global.fetch = jest.fn().mockResolvedValue(
+      new Response(buildSSEStream(sseChunks), { status: 200 })
+    );
+
+    const provider = new N8nAgentLLM();
+    const stream = await provider.streamGetChatCompletion([
+      { role: "user", content: "Hello?" },
+    ]);
+
+    const tokens = [];
+    for await (const chunk of stream) {
+      const token = chunk?.choices?.[0]?.delta?.content;
+      if (token) tokens.push(token);
+    }
+
+    expect(tokens).toEqual(["He", "llo"]);
+  });
+
   test("handles openai-style chunk events for backwards compatibility", async () => {
     const sseChunks = [
       'data: {"type":"chunk","id":"1","delta":{"content":"Hi"}}\n\n',
@@ -149,6 +175,24 @@ describe("N8nAgentLLM", () => {
     ]);
 
     expect(result.textResponse).toBe("Hi");
+  });
+
+  test("can disable streaming when configured to buffer responses", async () => {
+    const sseChunks = ['data: {"type":"done","id":"1","finished":true}\n\n'];
+
+    global.fetch = jest.fn().mockResolvedValue(
+      new Response(buildSSEStream(sseChunks), { status: 200 })
+    );
+
+    process.env.N8N_AGENT_BUFFER_STREAM = "true";
+    const provider = new N8nAgentLLM();
+
+    expect(provider.streamingEnabled()).toBe(false);
+    const result = await provider.getChatCompletion([
+      { role: "user", content: "Hello" },
+    ]);
+
+    expect(result.textResponse).toBe("");
   });
 
   test("throws on non-200 responses", async () => {
