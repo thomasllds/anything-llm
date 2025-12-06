@@ -274,20 +274,21 @@ class N8nAgentLLM {
         };
 
         const processSegments = async function* () {
-          // Support both LF and CRLF boundaries to avoid buffering when upstream
-          // proxies re-write newlines. As soon as a double-line break arrives we
-          // emit the buffered event.
-          let match = buffer.match(/\r?\n\r?\n/);
-          while (match) {
-            const segment = buffer.slice(0, match.index);
-            buffer = buffer.slice(match.index + match[0].length);
+          // Emit as soon as we see a newline to avoid buffering when n8n streams
+          // NDJSON without the double-newline SSE separator. We still support
+          // the classic "\n\n" boundary by walking line by line.
+          while (true) {
+            const newlineIndex = buffer.search(/\r?\n/);
+            if (newlineIndex === -1) break;
 
-            const lines = segment.split(/\r?\n/);
-            for (const line of lines) {
-              for (const emitted of emitChunk(line)) yield emitted;
-            }
+            const segment = buffer.slice(0, newlineIndex);
+            buffer = buffer.slice(newlineIndex + (buffer[newlineIndex] === "\r" ? 2 : 1));
 
-            match = buffer.match(/\r?\n\r?\n/);
+            // An empty line is an SSE boundary; skip emitting but keep iterating
+            // to process the next event immediately.
+            if (!segment.trim()) continue;
+
+            for (const emitted of emitChunk(segment)) yield emitted;
           }
         };
 
